@@ -1,0 +1,313 @@
+PARSER_BEGIN(MinijavaParser)
+package syntaxtree;
+	class MinijavaParser {
+    	public static void main (String[] args) {
+	    	MinijavaParser parser;
+
+		    parser = new MinijavaParser(System.in);
+		     try{
+		        parser.Program();
+		        System.out.println ("O input foi lido com sucesso.");
+		      }
+		      catch(ParseException e){
+		        System.out.println ("Erro durante a leitura.");
+		        System.out.println (e.getMessage());
+		      }
+		      catch(TokenMgrError e){
+		        System.out.println ("Houve um erro.");
+		        System.out.println (e.getMessage());
+		      }
+		}
+	}
+PARSER_END(MinijavaParser)
+
+TOKEN : {
+	//PALAVRAS RESERVADAS
+	< CLASS: "class" >{System.out.print("CLASS ");}
+	| < PUBLIC: "public" >{System.out.print("PUBLIC ");}
+	| < STATIC: "static" >{System.out.print("STATIC ");}
+	| < VOID: "void" >{System.out.print("VOID ");}
+	| < MAIN: "main" >{System.out.print("MAIN ");}
+	| < STRING: "String" >{System.out.print("STRING ");}
+	| < LPAR: "(" >{System.out.print("LPAR ");}
+	| < RPAR: ")" >{System.out.print("RPAR ");}
+	| < LBRACE: "{" >{System.out.print("LBRACE ");}
+	| < RBRACE: "}" >{System.out.print("RBRACE ");}
+	| < LBRACKET: "[" >{System.out.print("LBRACKET ");}
+	| < RBRACKET: "]" >{System.out.print("RBRACKET ");}
+	| < IF: "if" >{System.out.print("IF ");}
+	| < ELSE: "else" >{System.out.print("ELSE ");}
+	| < EXTENDS: "extends" >{System.out.print("EXTENDS ");}
+	| < RETURN: "return" >{System.out.print("RETURN ");}
+	| < WHILE: "while" >{System.out.print("WHILE ");}
+	| < SYSOUT: "System.out.println" >{System.out.print("SYSOUT ");}
+	| < LENGTH: "length" >{System.out.print("LENGTH ");}
+	| < NEW: "new" >{System.out.print("NEW ");}
+	| < SEMICOLON: ";" >{System.out.print("SEMICOLON ");}
+	| < COMMA: "," >{System.out.print("COMMA ");}
+	| < DOT: "." >{System.out.print("DOT ");}
+	| < EQUALS: "=" >{System.out.print("EQUALS ");}
+	| < TRUE: "true" >{System.out.print("TRUE ");}
+	| < FALSE: "false" >{System.out.print("FALSE ");}
+	| < THIS: "this" >{System.out.print("THIS ");}
+	| < NOT: "!" >{System.out.print("NOT ");}
+	//| < INT_B: "int []" >{System.out.print("INT_B ");}
+	| < INT: "int" >{System.out.print("INT ");}
+	| < BOOLEAN: "boolean" >{System.out.print("BOOLEAN ");}
+}
+
+TOKEN: {
+	//O RESTANTE DOS TOKENS
+	< #DIGIT: ["0"-"9"] >
+	| < #LETTER: ["a"-"z"] >
+	| < #UC_LETTER: ["A"-"Z"] >
+	| < ID: ((<LETTER>|<UC_LETTER>)(<LETTER>|<UC_LETTER>|<DIGIT>|"_")*) >{System.out.print("ID("+matchedToken.image+") ");}
+	| < AND: "&&" >{System.out.print("OP("+matchedToken.image+") ");}
+	| < MINUS: "-" >{System.out.print("OP("+matchedToken.image+") ");}
+	| < PLUS: "+" >{System.out.print("OP("+matchedToken.image+") ");}
+	| < TIMES: "*" >{System.out.print("OP("+matchedToken.image+") ");}
+	| < LESS_THAN: "<" >{System.out.print("OP("+matchedToken.image+") ");}
+	| < INTEGER_LITERAL: (<DIGIT>)+ > {System.out.print("INTEGER_LITERAL("+matchedToken.image+") ");}
+}
+
+SKIP : {
+	//As duas primeiras expressões representam os comentários, que a gente deve dar skip: a primeira é comentário do tipo /* ... */ 
+	//que pode ser aninhado e tomar mais de uma linha, e a segunda comentário do tipo // que toma uma linha só
+	< ("/*"(~[])*"*/") >
+	| < ("//"(~["\n"])*) >
+	| " " 
+	| "\t" 
+	| "\n" 
+	| "\r"
+	// dos testes que eu tava fazendo: ((\/\*[\w\d\s\n^$.|?*+()/\\]*\*\/)|(\/\/(.)*)). Mas acho que as expressões acima estão okay!
+}
+
+//void Start() :
+// {}
+// {  
+//	( <CLASS> | <PUBLIC> | <STATIC> | <VOID> | <MAIN> | <STRING> | <LPAR> | <RPAR> | <LBRACE> | <RBRACE> | <LBRACKET> | <RBRACKET> |
+//	<IF> | <ELSE> | <EXTENDS> | <RETURN> | <WHILE> | <SYSOUT> | <LENGTH> | <NEW> | <SEMICOLON> | <COMMA> | <POINT> | <EQUALS> |
+//	<TRUE> | <FALSE> | <THIS> | <NOT> | <INT_B> | <INT> | <BOOLEAN> | <ID> | <OP> | <INTEGER_LITERAL> )* <EOF> 
+//}
+
+Program Program():
+{
+	MainClass mc;
+	ClassDeclList cdl = new ClassDeclList();
+	ClassDecl cd;
+}
+{
+	mc = MainClass() ( cd = ClassDecl() {cdl.addElement(cd);})* <EOF>
+	{ return new Program(mc, cdl); }
+}
+
+MainClass MainClass():
+{
+	Identifier id1;
+	Identifier id2;
+	Statement st;
+}
+{
+	<CLASS> <ID> { id1 = new Identifier(token.image); } <LBRACE> <PUBLIC> <STATIC> <VOID> <MAIN> <LPAR> <STRING> <LBRACKET> <RBRACKET> <ID> 
+	{id2 = new Identifier(token.image); } <RPAR> <LBRACE> st = Statement() <RBRACE> <RBRACE>
+	{ return new MainClass(id1, id2, st); }
+}
+
+ClassDecl ClassDecl():
+{
+	Identifier id1;
+	Identifier id2;
+	VarDeclList vdl = new VarDeclList();
+	VarDecl vd;
+	MethodDeclList mdl = new MethodDeclList();
+	MethodDecl md;
+}
+{
+	LOOKAHEAD(3)
+	 <CLASS> <ID> { id1 = new Identifier(token.image); } <LBRACE> ( vd = VarDecl() {vdl.addElement(vd);})* ( md = MethodDecl() {mdl.addElement(md);})* <RBRACE>
+	 { return new ClassDeclSimple(id1, vdl, mdl); }
+ 	| <CLASS> <ID> { id1 = new Identifier(token.image); } <EXTENDS> <ID> { id2 = new Identifier(token.image); } <LBRACE> ( vd = VarDecl() {vdl.addElement(vd);})* ( md = MethodDecl() {mdl.addElement(md);})* <RBRACE> 
+	 { return new ClassDeclExtends(id1, id2, vdl, mdl); }
+}
+
+VarDecl VarDecl():
+{
+	Type t;
+	Identifier id;
+}
+{
+	t = Type() <ID> { id = new Identifier(token.image); } <SEMICOLON>
+	{ return new VarDecl(t, id); }
+}
+
+MethodDecl MethodDecl():
+{
+	Type t;
+	Identifier i;
+	FormalList fl;
+	VarDeclList vdl = new VarDeclList();
+	VarDecl vd;
+	StatementList stl = new StatementList();
+	Statement st;
+	Exp e;
+}
+{
+	<PUBLIC> t = Type() <ID> { i = new Identifier(token.image); } <LPAR> fl = FormalList() <RPAR> <LBRACE> (LOOKAHEAD(2) vd = VarDecl() {vdl.addElement(vd);} )*  ( st = Statement() {stl.addElement(st);} )* <RETURN> e = Exp() <SEMICOLON> <RBRACE>
+	{ return new MethodDecl(t, i, fl, vdl, stl, e); }
+}
+
+Formal Formal() :
+{
+	Type t;
+  	Identifier i;
+}
+{ 
+	t = Type() <ID> { i = new Identifier(token.image); }
+	{ return new Formal(t,i); }
+}
+
+FormalList FormalList():
+{
+	FormalList fl = new FormalList();
+	Formal f;
+	Formal f1;
+
+}
+{
+	 ( f = Formal() {fl.addElement(f); })(f1 = FormalRest() { fl.addElement(f1); })*
+	{ return fl; }
+	| { return fl; }
+}
+
+Formal FormalRest():
+{
+	Type t;
+	Identifier id;
+}
+{
+	<COMMA> t = Type() <ID> { id = new Identifier(token.image); }
+	{ return new Formal(t, id); }
+}
+
+Type Type():
+{
+}
+{
+	LOOKAHEAD(2) <INT> <LBRACKET> <RBRACKET> { return new IntArrayType(); } 
+	| <INT> { return new IntegerType(); }
+	| <BOOLEAN> { return new BooleanType(); }
+	| <ID> { return new IdentifierType(token.image); }
+}
+
+Statement Statement():
+{
+	Statement st1;
+	Statement st2;
+	StatementList stl = new StatementList();
+	Exp e1;
+	Exp e2;
+	Identifier i;
+}
+{
+	<LBRACE> ( st1 = Statement() { stl.addElement(st1); })* <RBRACE> 
+	{ return new Block(stl); }
+	| <IF> <LPAR> { e1 = Exp(); } <RPAR> st1 = Statement() <ELSE> st2 = Statement()
+	{ return new If(e1, st1, st2); }
+	| <WHILE> <LPAR> e1 = Exp() <RPAR> st1 = Statement()
+	{ return new While(e1, st1); }
+	| <SYSOUT> <LPAR> e1 = Exp() <RPAR> <SEMICOLON>
+	{ return new Print(e1); }
+	| LOOKAHEAD(2) <ID> { i = new Identifier(token.image); } <EQUALS> e1 = Exp() <SEMICOLON>
+	{ return new Assign(i, e1); }
+	| <ID> { i = new Identifier(token.image); } <LBRACKET> e1 = Exp() <RBRACKET> <EQUALS> e2 = Exp() <SEMICOLON>
+	{ return new ArrayAssign(i, e1, e2); }
+}
+
+Exp Exp():
+{
+	IntegerLiteral il;
+	True t;
+	False f;
+	IdentifierExp id;
+	Identifier id2;
+	This ths;
+	Exp e;
+	NewArray arr;
+	NewObject obj;
+	Not n;
+}
+{
+	<INTEGER_LITERAL> { il = new IntegerLiteral(Integer.parseInt(token.image)); }
+	{ return Exp1(il); }
+	| <TRUE> { t = new True(); }
+	{ return Exp1(t); }
+	| <FALSE> { f = new False(); }
+	{ return Exp1(f); }
+	| <ID> { id = new IdentifierExp(token.image); }
+	{ return Exp1(id); }
+	| <THIS> { ths = new This(); }
+	{ return Exp1(ths); }
+	| LOOKAHEAD(2) <NEW> <INT> <LBRACKET> e = Exp() <RBRACKET> {arr = new NewArray(e); } 
+	{ return Exp1(arr); } 
+	| <NEW> <ID> { id2 = new Identifier(token.image); } <LPAR> <RPAR> { obj = new NewObject(id2); } 
+	{ return Exp1(obj); }
+	| <NOT> e = Exp() { n = new Not(e); } 
+	{ return Exp1(n); }
+	| <LPAR> e = Exp() <RPAR>
+	{ return Exp1(e); }
+}
+
+Exp Exp1(Exp e1):
+{
+	ExpList el;
+	Exp e2;
+	Minus m;
+	Plus p;
+	LessThan l;
+	And a;
+	Times t;
+	Identifier id;
+	ArrayLength al;
+	ArrayLookup alookup;
+	Call c;
+}
+{
+	<MINUS> e2 = Exp() { m = new Minus(e1, e2); } 
+	{ return Exp1(m); }
+	| <PLUS> e2 = Exp() { p = new Plus(e1, e2); }  
+	{ return Exp1(p); }
+	| <LESS_THAN> e2 = Exp() { l = new LessThan(e1,e2); } 
+	{ return Exp1(l); }
+	| <AND> e2 = Exp() { a = new And(e1, e2); } 
+	{ return Exp1(a); }
+	| <TIMES> e2 = Exp() { t = new Times(e1, e2); } 
+	{ return Exp1(t); }
+	| <LBRACKET> e2 = Exp() <RBRACKET> { alookup = new ArrayLookup(e1,e2); }
+	{ return Exp1(alookup); }
+	| LOOKAHEAD(2) <DOT> <LENGTH> { al = new ArrayLength(e1); } 
+	{ return Exp1(al); } 
+	| <DOT> <ID> { id = new Identifier(token.image); } <LPAR> { el = ExpList(); } <RPAR> { c = new Call(e1, id, el); } 
+	{ return Exp1(c); }
+	| { return e1; }	
+}
+
+ExpList ExpList():
+{
+	Exp e;
+	Exp er;
+	ExpList el = new ExpList();
+}
+{
+	( e = Exp() { el.addElement(e); } ) ( er = ExpRest() { el.addElement(er); })*
+	{ return el; }
+	| { return el; }
+}
+
+Exp ExpRest():
+{
+	Exp e;
+}
+{
+	<COMMA> e = Exp()
+	{ return e; }
+}
